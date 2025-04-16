@@ -13,7 +13,6 @@ pub struct TimeVal {
 
 /// task exits and submit an exit code
 pub fn sys_exit(exit_code: i32) -> ! {
-    get_current_task_trace_count();
     trace!("[kernel] Application exited with code {}", exit_code);
     exit_current_and_run_next();
     panic!("Unreachable in sys_exit!");
@@ -21,7 +20,6 @@ pub fn sys_exit(exit_code: i32) -> ! {
 
 /// current task gives up resources for other tasks
 pub fn sys_yield() -> isize {
-    get_current_task_trace_count();
     trace!("kernel: sys_yield");
     suspend_current_and_run_next();
     0
@@ -30,7 +28,6 @@ pub fn sys_yield() -> isize {
 /// get time with second and microsecond
 pub fn sys_get_time(ts: *mut TimeVal, _tz: usize) -> isize {
     trace!("kernel: sys_get_time");
-    get_current_task_trace_count();
     let us = get_time_us();
     unsafe {
         *ts = TimeVal {
@@ -65,7 +62,7 @@ pub fn sys_trace(trace_request: usize, id: usize, data: usize) -> isize {
             return 0;
         }
         2 => {
-            return get_current_task_trace_count() as isize;
+            return get_current_task_trace_count(id) as isize;
         }
         _ => -1,
     }

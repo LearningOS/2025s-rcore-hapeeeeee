@@ -17,6 +17,7 @@ mod task;
 use crate::config::MAX_APP_NUM;
 use crate::loader::{get_num_app, init_app_cx};
 use crate::sync::UPSafeCell;
+use crate::syscall::SYSCALL_IDS;
 use lazy_static::*;
 use switch::__switch;
 pub use task::{TaskControlBlock, TaskStatus};
@@ -54,7 +55,7 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
-            task_call_trace_count: 0,
+            syscall_trace_count: [0; 5],
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -137,12 +138,28 @@ impl TaskManager {
         }
     }
 
-    /// Get the current task id.
-    pub fn get_current_task_trace_count(&self) -> usize {
+    /// trace syscall count + 1
+    pub fn trace_syscall_in_current_task(&self, syscall_id: usize) {
         let mut inner = self.inner.exclusive_access();
         let current = inner.current_task;
-        inner.tasks[current].task_call_trace_count += 1;
-        inner.tasks[current].task_call_trace_count
+        for (i, &id) in SYSCALL_IDS.iter().enumerate() {
+            if id == syscall_id {
+                inner.tasks[current].syscall_trace_count[i] += 1;
+                break;
+            }
+        }
+    }
+
+    /// Get the current task syscall count by id.
+    pub fn get_current_task_trace_count(&self, syscall_id: usize) -> usize {
+        let inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        for (i, &id) in SYSCALL_IDS.iter().enumerate() {
+            if id == syscall_id {
+                return inner.tasks[current].syscall_trace_count[i];
+            }
+        }
+        0
     }
 }
 
@@ -180,6 +197,11 @@ pub fn exit_current_and_run_next() {
 }
 
 /// Get the current task id.
-pub fn get_current_task_trace_count() -> usize {
-    TASK_MANAGER.get_current_task_trace_count()
+pub fn trace_syscall_in_current_task(syscall_id: usize) {
+    TASK_MANAGER.trace_syscall_in_current_task(syscall_id)
+}
+
+/// Get the current task id.
+pub fn get_current_task_trace_count(syscall_id: usize) -> usize {
+    TASK_MANAGER.get_current_task_trace_count(syscall_id)
 }
