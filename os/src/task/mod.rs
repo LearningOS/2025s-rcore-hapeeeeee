@@ -54,6 +54,7 @@ lazy_static! {
         let mut tasks = [TaskControlBlock {
             task_cx: TaskContext::zero_init(),
             task_status: TaskStatus::UnInit,
+            task_call_trace_count: 0,
         }; MAX_APP_NUM];
         for (i, task) in tasks.iter_mut().enumerate() {
             task.task_cx = TaskContext::goto_restore(init_app_cx(i));
@@ -135,9 +136,17 @@ impl TaskManager {
             panic!("All applications completed!");
         }
     }
+
+    /// Get the current task id.
+    pub fn get_current_task_trace_count(&self) -> usize {
+        let mut inner = self.inner.exclusive_access();
+        let current = inner.current_task;
+        inner.tasks[current].task_call_trace_count += 1;
+        inner.tasks[current].task_call_trace_count
+    }
 }
 
-/// Run the first task in task list.
+/// Run the first task in task lis  t.
 pub fn run_first_task() {
     TASK_MANAGER.run_first_task();
 }
@@ -168,4 +177,9 @@ pub fn suspend_current_and_run_next() {
 pub fn exit_current_and_run_next() {
     mark_current_exited();
     run_next_task();
+}
+
+/// Get the current task id.
+pub fn get_current_task_trace_count() -> usize {
+    TASK_MANAGER.get_current_task_trace_count()
 }
