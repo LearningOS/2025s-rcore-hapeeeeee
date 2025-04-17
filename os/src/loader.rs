@@ -33,6 +33,8 @@ impl KernelStack {
     fn get_sp(&self) -> usize {
         self.data.as_ptr() as usize + KERNEL_STACK_SIZE
     }
+
+    // 将trap_cx（保存着用户栈的信息）压入内核栈中, 返回内核栈的栈顶地址
     pub fn push_context(&self, trap_cx: TrapContext) -> usize {
         let trap_cx_ptr = (self.get_sp() - core::mem::size_of::<TrapContext>()) as *mut TrapContext;
         unsafe {
@@ -98,6 +100,6 @@ pub fn load_apps() {
 pub fn init_app_cx(app_id: usize) -> usize {
     KERNEL_STACK[app_id].push_context(TrapContext::app_init_context(
         get_base_i(app_id),
-        USER_STACK[app_id].get_sp(),
+        USER_STACK[app_id].get_sp(), // 用户栈的栈顶
     ))
 }
